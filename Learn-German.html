@@ -183,7 +183,7 @@
             <button class="btn" id="saveApiKeyBtn"><i class="fas fa-save"></i> Save</button>
             <button class="btn" id="clearApiKeyBtn"><i class="fas fa-eraser"></i> Clear</button>
           </div>
-          <small>Your key is stored in plain text in localStorage and accessible to scripts on this page. Use a restricted/low‑quota key.</small>
+          <small>Your key is stored in plain text in localStorage and accessible to scripts on this page. Use a restricted/low-quota key.</small>
         </div>
       </div>
       <div class="glass-card" style="margin-top:20px;">
@@ -206,7 +206,7 @@
 </div>
 <script>
 // ========== CONFIG & DATA =====================
-const sanitizeApiKey = (value) => value.trim().replace(/[^A-Za-z0-9-_]/g, "");
+const sanitizeApiKey = (value) => value.trim().replace(/\s+/g, "").replace(/[<>"'`]/g, "");
 const getApiKey = () => sanitizeApiKey(localStorage.getItem("gemini_api_key") || "");
 const hasApiKey = () => getApiKey().length > 0;
 const DAILY_TASKS = ["AI Chat", "Complete exercise", "Review SRS", "Speech practice", "Reflection"];
