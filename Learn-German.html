@@ -183,7 +183,7 @@
             <button class="btn" id="saveApiKeyBtn"><i class="fas fa-save"></i> Save</button>
             <button class="btn" id="clearApiKeyBtn"><i class="fas fa-eraser"></i> Clear</button>
           </div>
-          <small>Stored in plain text in localStorage and readable by any script on this page (including XSS). The key is sent in the request URL. Use a restricted, low-quota key in Google Cloud.</small>
+          <small>Stored in plain text in localStorage and readable by any script on this page (including XSS). The key is sent in the request URL. Use a restricted, low-quota key in Google Cloud, or a backend proxy for stronger protection.</small>
         </div>
       </div>
       <div class="glass-card" style="margin-top:20px;">
@@ -978,7 +978,7 @@ function setupApiKeyControls() {
     let sanitized = sanitizeApiKey(input.value);
     input.value = sanitized;
     if (!sanitized) { showToast("Enter an API key or use Clear."); return; }
-    if (!isLikelyApiKey(sanitized)) { showToast("API key format looks invalid."); return; }
+    if (!isLikelyApiKey(sanitized)) { showToast("Invalid key. It should start with AIza and be 20+ chars."); return; }
     localStorage.setItem("gemini_api_key", sanitized);
     updateApiKeyStatus();
     showToast("API key saved.");
