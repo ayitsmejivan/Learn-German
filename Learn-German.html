@@ -53,6 +53,20 @@
     .distraction-blocker { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050f0a; z-index: 999; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 30px; }
     .distraction-blocker.active { display: flex; }
     .ai-roleplay {border:2px dashed #81c784;padding:8px 14px; border-radius:16px;margin-bottom:10px;}
+    .select-input { background: rgba(0,0,0,0.3); border: 1px solid #4caf50; border-radius: 14px; padding: 8px 12px; color: #fff; }
+    .lesson-controls { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .lesson-content { background: rgba(0,0,0,0.25); padding: 14px; border-radius: 16px; }
+    .lesson-content h4 { margin-bottom: 6px; }
+    .lesson-goals { margin-left: 18px; margin-bottom: 10px; }
+    .phrasebook-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .phrasebook-chip { background: rgba(255,255,255,0.08); border:1px solid rgba(76,175,80,0.3); border-radius: 20px; padding: 6px 12px; cursor: pointer; }
+    .phrasebook-chip.active { background: rgba(76,175,80,0.25); }
+    .phrasebook-list { max-height: 220px; overflow-y: auto; display: grid; gap: 8px; }
+    .phrase-item { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 8px 12px; display: flex; justify-content: space-between; gap: 10px; }
+    .phrase-item span { color: #a5d6a7; }
+    .tips-list { margin-left: 18px; line-height: 1.6; }
+    .api-key-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .api-key-input { flex: 1; min-width: 220px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 </head>
@@ -100,6 +114,24 @@
         <h3><i class="fas fa-cubes"></i> Learning Modules</h3>
         <div class="modules-grid" id="modulesGrid"></div>
       </div>
+      <div class="glass-card" style="margin-top:20px;">
+        <h3><i class="fas fa-book-open"></i> Lesson Library</h3>
+        <div class="lesson-controls">
+          <select id="lessonModuleSelect" class="select-input"></select>
+          <select id="lessonSelect" class="select-input"></select>
+          <button class="btn" id="toggleLessonBtn">Mark Completed</button>
+        </div>
+        <div id="lessonContent" class="lesson-content"></div>
+      </div>
+      <div class="glass-card" style="margin-top:20px;">
+        <h3><i class="fas fa-comments"></i> Phrasebook</h3>
+        <div id="phrasebookTabs" class="phrasebook-tabs"></div>
+        <div id="phrasebookList" class="phrasebook-list"></div>
+      </div>
+      <div class="glass-card" style="margin-top:20px;">
+        <h3><i class="fas fa-pen"></i> Grammar Quick Tips</h3>
+        <ul id="grammarTips" class="tips-list"></ul>
+      </div>
       <!-- Games & Speech area -->
       <div class="glass-card" style="margin-top:20px;">
         <div>
@@ -144,6 +176,15 @@
           <button class="btn" onclick="explainGrammar()"><i class="fas fa-book"></i> Explain a Topic</button>
           <button class="btn" onclick="startRoleplay()"><i class="fas fa-theater-masks"></i> Roleplay Scenario</button>
         </div>
+        <div style="margin-top: 14px;">
+          <div style="font-size:0.9rem; opacity:0.9;">Gemini API Key: <span id="apiKeyStatus">Not set</span></div>
+          <div class="api-key-row">
+            <input type="password" id="apiKeyInput" class="chat-input api-key-input" placeholder="Paste your Gemini API key">
+            <button class="btn" id="saveApiKeyBtn"><i class="fas fa-save"></i> Save</button>
+            <button class="btn" id="clearApiKeyBtn"><i class="fas fa-eraser"></i> Clear</button>
+          </div>
+          <small>Your key stays in your browser (localStorage).</small>
+        </div>
       </div>
       <div class="glass-card" style="margin-top:20px;">
         <h3><i class="fas fa-brain"></i> Smart Exercises (AI Powered)</h3>
@@ -165,23 +206,346 @@
 </div>
 <script>
 // ========== CONFIG & DATA =====================
-const GEMINI_API_KEY = "AIzaSyB1rNPMUeYgKNpHvHOk_tzKiY72i5ndpWQ"; // <-- PASTE YOUR GEMINI API KEY HERE!
-const HAS_API_KEY = GEMINI_API_KEY !== "AIzaSyB1rNPMUeYgKNpHvHOk_tzKiY72i5ndpWQ";
+let GEMINI_API_KEY = localStorage.getItem("gemini_api_key") || "";
+let HAS_API_KEY = GEMINI_API_KEY.trim().length > 0;
 const DAILY_TASKS = ["AI Chat", "Complete exercise", "Review SRS", "Speech practice", "Reflection"];
 const MODULES = [
-  { id:1, title:"Greetings", icon:"👋", lessons:2 },
-  { id:2, title:"Numbers", icon:"🔢", lessons:2 },
-  { id:3, title:"Verbs", icon:"⚙️", lessons:2 },
-  { id:4, title:"Questions", icon:"❓", lessons:1 },
-  { id:5, title:"Family", icon:"👨‍👩‍👧", lessons:1 }
+  { id:1, title:"Greetings & Introductions", icon:"👋", lessons:3 },
+  { id:2, title:"Numbers & Time", icon:"🔢", lessons:3 },
+  { id:3, title:"Family & People", icon:"👨‍👩‍👧", lessons:3 },
+  { id:4, title:"Daily Routine & Verbs", icon:"⚙️", lessons:3 },
+  { id:5, title:"Food & Drinks", icon:"🍽️", lessons:3 },
+  { id:6, title:"Home & Furniture", icon:"🏠", lessons:3 },
+  { id:7, title:"Shopping & Money", icon:"🛍️", lessons:3 },
+  { id:8, title:"Travel & Directions", icon:"🧭", lessons:3 },
+  { id:9, title:"Weather & Seasons", icon:"⛅", lessons:3 },
+  { id:10, title:"Health & Emergencies", icon:"🩺", lessons:3 },
+  { id:11, title:"Work & School", icon:"💼", lessons:3 },
+  { id:12, title:"Hobbies & Free Time", icon:"🎨", lessons:3 }
+];
+const LESSON_LIBRARY = [
+  {
+    moduleId: 1,
+    title: "Greetings & Introductions",
+    lessons: [
+      { title: "Hello & Goodbye", goals: ["Greet someone politely", "Say goodbye", "Use time of day"], phrases: [
+        {de:"Hallo!",en:"Hello!"},{de:"Guten Morgen!",en:"Good morning!"},{de:"Guten Abend!",en:"Good evening!"},
+        {de:"Gute Nacht!",en:"Good night!"},{de:"Tschüss!",en:"Bye!"},{de:"Auf Wiedersehen!",en:"Goodbye!"}
+      ]},
+      { title: "Introduce Yourself", goals: ["Say your name", "Ask someone's name", "Say where you live"], phrases: [
+        {de:"Ich heiße Amina.",en:"My name is Amina."},{de:"Wie heißt du?",en:"What is your name?"},
+        {de:"Ich komme aus Indien.",en:"I come from India."},{de:"Ich wohne in Berlin.",en:"I live in Berlin."},
+        {de:"Freut mich!",en:"Nice to meet you!"}
+      ]},
+      { title: "Polite Phrases", goals: ["Be polite", "Apologize", "Thank someone"], phrases: [
+        {de:"Bitte.",en:"Please/You're welcome."},{de:"Danke schön!",en:"Thank you very much!"},
+        {de:"Entschuldigung.",en:"Excuse me/Sorry."},{de:"Kein Problem.",en:"No problem."},
+        {de:"Wie geht es Ihnen?",en:"How are you? (formal)"}
+      ]}
+    ]
+  },
+  {
+    moduleId: 2,
+    title: "Numbers & Time",
+    lessons: [
+      { title: "Numbers 0–20", goals: ["Count to 20", "Ask for a number", "Say your phone number"], phrases: [
+        {de:"null, eins, zwei...",en:"zero, one, two..."},{de:"Wie viel kostet das?",en:"How much does that cost?"},
+        {de:"Meine Nummer ist...",en:"My number is..."},{de:"Ich brauche zwei Tickets.",en:"I need two tickets."}
+      ]},
+      { title: "Telling Time", goals: ["Ask the time", "Say the time", "Use Uhr"], phrases: [
+        {de:"Wie spät ist es?",en:"What time is it?"},{de:"Es ist acht Uhr.",en:"It is eight o'clock."},
+        {de:"Es ist halb neun.",en:"It is half past eight."},{de:"Um 7 Uhr.",en:"At 7 o'clock."}
+      ]},
+      { title: "Days & Months", goals: ["Name weekdays", "Talk about months", "Say dates"], phrases: [
+        {de:"Heute ist Montag.",en:"Today is Monday."},{de:"Morgen ist Dienstag.",en:"Tomorrow is Tuesday."},
+        {de:"Im März.",en:"In March."},{de:"Am 5. Mai.",en:"On May 5th."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 3,
+    title: "Family & People",
+    lessons: [
+      { title: "Family Members", goals: ["Name family members", "Say who someone is", "Ask about family"], phrases: [
+        {de:"Das ist meine Mutter.",en:"This is my mother."},{de:"Hast du Geschwister?",en:"Do you have siblings?"},
+        {de:"Mein Bruder ist 20.",en:"My brother is 20."},{de:"Meine Familie ist groß.",en:"My family is big."}
+      ]},
+      { title: "Describe People", goals: ["Describe someone", "Use basic adjectives", "Talk about age"], phrases: [
+        {de:"Er ist groß.",en:"He is tall."},{de:"Sie ist freundlich.",en:"She is friendly."},
+        {de:"Ich bin 25 Jahre alt.",en:"I am 25 years old."},{de:"Er hat braune Haare.",en:"He has brown hair."}
+      ]},
+      { title: "Relationships", goals: ["Say friend/partner", "Introduce people", "Use possessives"], phrases: [
+        {de:"Das ist mein Freund.",en:"This is my friend."},{de:"Sie ist meine Freundin.",en:"She is my girlfriend."},
+        {de:"Mein Vater heißt Amir.",en:"My father's name is Amir."},{de:"Wir sind Kollegen.",en:"We are colleagues."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 4,
+    title: "Daily Routine & Verbs",
+    lessons: [
+      { title: "Common Verbs", goals: ["Use basic verbs", "Form simple sentences", "Use ich/du"], phrases: [
+        {de:"Ich lerne Deutsch.",en:"I learn German."},{de:"Du arbeitest heute.",en:"You work today."},
+        {de:"Wir wohnen in Köln.",en:"We live in Cologne."},{de:"Er spielt Fußball.",en:"He plays football."}
+      ]},
+      { title: "Daily Routine", goals: ["Describe your day", "Use time words", "Use present tense"], phrases: [
+        {de:"Ich stehe um 7 Uhr auf.",en:"I get up at 7."},{de:"Ich frühstücke um 8 Uhr.",en:"I eat breakfast at 8."},
+        {de:"Ich gehe zur Arbeit.",en:"I go to work."},{de:"Abends lese ich.",en:"In the evening I read."}
+      ]},
+      { title: "Verb Position", goals: ["Put verb in position 2", "Ask a simple question", "Use nicht"], phrases: [
+        {de:"Heute trinke ich Kaffee.",en:"Today I drink coffee."},{de:"Ich gehe nicht.",en:"I do not go."},
+        {de:"Kommst du morgen?",en:"Are you coming tomorrow?"},{de:"Wo wohnst du?",en:"Where do you live?"}
+      ]}
+    ]
+  },
+  {
+    moduleId: 5,
+    title: "Food & Drinks",
+    lessons: [
+      { title: "At a Cafe", goals: ["Order a drink", "Be polite", "Say what you want"], phrases: [
+        {de:"Ich möchte einen Kaffee.",en:"I would like a coffee."},{de:"Haben Sie Tee?",en:"Do you have tea?"},
+        {de:"Mit Milch, bitte.",en:"With milk, please."},{de:"Noch ein Wasser, bitte.",en:"Another water, please."}
+      ]},
+      { title: "Meals", goals: ["Talk about meals", "Say what you eat", "Use mögen"], phrases: [
+        {de:"Zum Frühstück esse ich Brot.",en:"For breakfast I eat bread."},{de:"Ich mag Suppe.",en:"I like soup."},
+        {de:"Das Mittagessen ist um 12.",en:"Lunch is at 12."},{de:"Zum Abendessen gibt es Salat.",en:"For dinner there is salad."}
+      ]},
+      { title: "Ordering", goals: ["Order politely", "Ask for the bill", "Say preferences"], phrases: [
+        {de:"Ich nehme das.",en:"I'll take that."},{de:"Die Rechnung, bitte.",en:"The bill, please."},
+        {de:"Ohne Zucker, bitte.",en:"Without sugar, please."},{de:"Für mich vegetarisch.",en:"Vegetarian for me."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 6,
+    title: "Home & Furniture",
+    lessons: [
+      { title: "Rooms", goals: ["Name rooms", "Say where something is", "Describe your home"], phrases: [
+        {de:"Die Küche ist groß.",en:"The kitchen is big."},{de:"Das Wohnzimmer ist hell.",en:"The living room is bright."},
+        {de:"Ich habe ein Schlafzimmer.",en:"I have a bedroom."},{de:"Das Bad ist klein.",en:"The bathroom is small."}
+      ]},
+      { title: "Furniture", goals: ["Name common items", "Use there is/are", "Describe position"], phrases: [
+        {de:"Der Tisch steht hier.",en:"The table is here."},{de:"Es gibt einen Stuhl.",en:"There is a chair."},
+        {de:"Die Lampe ist neu.",en:"The lamp is new."},{de:"Das Bett ist bequem.",en:"The bed is comfortable."}
+      ]},
+      { title: "Prepositions", goals: ["Use in/on/under", "Describe locations", "Use mit + Dativ"], phrases: [
+        {de:"Das Buch ist auf dem Tisch.",en:"The book is on the table."},{de:"Die Tasche ist unter dem Stuhl.",en:"The bag is under the chair."},
+        {de:"Ich wohne in einer Wohnung.",en:"I live in an apartment."},{de:"Ich wohne mit meiner Familie.",en:"I live with my family."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 7,
+    title: "Shopping & Money",
+    lessons: [
+      { title: "Prices & Sizes", goals: ["Ask for price", "Say expensive/cheap", "Ask for size"], phrases: [
+        {de:"Wie viel kostet das?",en:"How much does that cost?"},{de:"Das ist teuer.",en:"That is expensive."},
+        {de:"Haben Sie Größe M?",en:"Do you have size M?"},{de:"Ich suche etwas Billiges.",en:"I am looking for something cheap."}
+      ]},
+      { title: "At the Store", goals: ["Ask for help", "Say what you need", "Use möchten"], phrases: [
+        {de:"Kann ich Ihnen helfen?",en:"Can I help you?"},{de:"Ich brauche eine Jacke.",en:"I need a jacket."},
+        {de:"Ich möchte das kaufen.",en:"I would like to buy that."},{de:"Gibt es das in Blau?",en:"Is it available in blue?"}
+      ]},
+      { title: "Paying", goals: ["Pay at checkout", "Ask for receipt", "Use card/cash"], phrases: [
+        {de:"Ich möchte bezahlen.",en:"I would like to pay."},{de:"Mit Karte, bitte.",en:"By card, please."},
+        {de:"Haben Sie Wechselgeld?",en:"Do you have change?"},{de:"Die Rechnung, bitte.",en:"The receipt, please."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 8,
+    title: "Travel & Directions",
+    lessons: [
+      { title: "Transport", goals: ["Use transport words", "Buy a ticket", "Say where you go"], phrases: [
+        {de:"Ich fahre mit dem Bus.",en:"I go by bus."},{de:"Ein Ticket nach Berlin, bitte.",en:"A ticket to Berlin, please."},
+        {de:"Der Zug ist pünktlich.",en:"The train is on time."},{de:"Wo ist der Bahnhof?",en:"Where is the station?"}
+      ]},
+      { title: "Asking Directions", goals: ["Ask for directions", "Use left/right", "Use straight"], phrases: [
+        {de:"Entschuldigung, wo ist...?",en:"Excuse me, where is...?"},{de:"Gehen Sie geradeaus.",en:"Go straight ahead."},
+        {de:"Dann links.",en:"Then left."},{de:"Dann rechts.",en:"Then right."}
+      ]},
+      { title: "Tickets & Plans", goals: ["Ask about schedule", "Say arrival time", "Use heute/morgen"], phrases: [
+        {de:"Wann kommt der Zug?",en:"When does the train arrive?"},{de:"Er kommt um 10 Uhr.",en:"It arrives at 10."},
+        {de:"Heute oder morgen?",en:"Today or tomorrow?"},{de:"Ich habe eine Reservierung.",en:"I have a reservation."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 9,
+    title: "Weather & Seasons",
+    lessons: [
+      { title: "Weather Words", goals: ["Describe weather", "Use warm/cold", "Make small talk"], phrases: [
+        {de:"Es ist kalt.",en:"It is cold."},{de:"Es ist warm.",en:"It is warm."},
+        {de:"Es regnet.",en:"It is raining."},{de:"Es ist sonnig.",en:"It is sunny."}
+      ]},
+      { title: "Seasons", goals: ["Name seasons", "Say what you like", "Use im + season"], phrases: [
+        {de:"Im Sommer ist es heiß.",en:"In summer it is hot."},{de:"Im Winter ist es kalt.",en:"In winter it is cold."},
+        {de:"Ich mag den Frühling.",en:"I like spring."},{de:"Der Herbst ist schön.",en:"Autumn is nice."}
+      ]},
+      { title: "Small Talk", goals: ["Chat about weather", "Ask opinions", "Use heute"], phrases: [
+        {de:"Schönes Wetter heute!",en:"Nice weather today!"},{de:"Findest du es warm?",en:"Do you find it warm?"},
+        {de:"Heute ist es windig.",en:"Today it is windy."},{de:"Morgen wird es besser.",en:"Tomorrow it will be better."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 10,
+    title: "Health & Emergencies",
+    lessons: [
+      { title: "At the Doctor", goals: ["Describe symptoms", "Ask for help", "Say where it hurts"], phrases: [
+        {de:"Ich bin krank.",en:"I am sick."},{de:"Ich habe Kopfschmerzen.",en:"I have a headache."},
+        {de:"Es tut hier weh.",en:"It hurts here."},{de:"Brauche ich einen Termin?",en:"Do I need an appointment?"}
+      ]},
+      { title: "Pharmacy", goals: ["Ask for medicine", "Say you need something", "Use brauchen"], phrases: [
+        {de:"Ich brauche Medikamente.",en:"I need medicine."},{de:"Haben Sie etwas gegen Husten?",en:"Do you have something for cough?"},
+        {de:"Wie oft?",en:"How often?"},{de:"Danke für die Hilfe.",en:"Thanks for the help."}
+      ]},
+      { title: "Emergency", goals: ["Call for help", "Use urgent phrases", "Give location"], phrases: [
+        {de:"Hilfe!",en:"Help!"},{de:"Rufen Sie die Polizei!",en:"Call the police!"},
+        {de:"Ich brauche einen Arzt.",en:"I need a doctor."},{de:"Ich bin hier.",en:"I am here."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 11,
+    title: "Work & School",
+    lessons: [
+      { title: "Jobs", goals: ["Say your job", "Ask about jobs", "Use arbeiten"], phrases: [
+        {de:"Ich bin Student.",en:"I am a student."},{de:"Ich arbeite im Büro.",en:"I work in the office."},
+        {de:"Was machst du beruflich?",en:"What do you do for work?"},{de:"Ich suche Arbeit.",en:"I am looking for work."}
+      ]},
+      { title: "Classroom", goals: ["Use classroom words", "Ask questions", "Say you understand"], phrases: [
+        {de:"Ich verstehe.",en:"I understand."},{de:"Ich verstehe nicht.",en:"I do not understand."},
+        {de:"Können Sie das wiederholen?",en:"Can you repeat that?"},{de:"Ich brauche ein Buch.",en:"I need a book."}
+      ]},
+      { title: "Office Basics", goals: ["Make requests", "Talk about meetings", "Use time"], phrases: [
+        {de:"Wir haben ein Meeting um 10.",en:"We have a meeting at 10."},{de:"Ich schreibe eine E-Mail.",en:"I am writing an email."},
+        {de:"Bitte schicken Sie mir das.",en:"Please send me that."},{de:"Ich bin heute im Büro.",en:"I am in the office today."}
+      ]}
+    ]
+  },
+  {
+    moduleId: 12,
+    title: "Hobbies & Free Time",
+    lessons: [
+      { title: "Leisure Activities", goals: ["Say what you like", "Talk about hobbies", "Use gern"], phrases: [
+        {de:"Ich spiele gern Fußball.",en:"I like to play football."},{de:"Ich lese gern Bücher.",en:"I like to read books."},
+        {de:"Ich höre gern Musik.",en:"I like to listen to music."},{de:"Ich gehe gern spazieren.",en:"I like to go for walks."}
+      ]},
+      { title: "Invitations", goals: ["Invite someone", "Accept/decline", "Use mitkommen"], phrases: [
+        {de:"Hast du Zeit?",en:"Do you have time?"},{de:"Kommst du mit?",en:"Are you coming with me?"},
+        {de:"Gerne!",en:"Gladly!"},{de:"Tut mir leid, keine Zeit.",en:"Sorry, no time."}
+      ]},
+      { title: "Preferences", goals: ["Say what you like", "Use lieber", "Make choices"], phrases: [
+        {de:"Ich mag Kaffee.",en:"I like coffee."},{de:"Ich esse lieber Obst.",en:"I prefer to eat fruit."},
+        {de:"Was möchtest du?",en:"What would you like?"},{de:"Ich möchte Wasser.",en:"I would like water."}
+      ]}
+    ]
+  }
+];
+const PHRASEBOOK = [
+  { category: "Essentials", phrases: [
+    {de:"Wie geht es dir?",en:"How are you?"},{de:"Mir geht es gut.",en:"I am doing well."},
+    {de:"Ich verstehe.",en:"I understand."},{de:"Ich verstehe nicht.",en:"I don't understand."},
+    {de:"Kannst du das wiederholen?",en:"Can you repeat that?"},{de:"Langsam, bitte.",en:"Slowly, please."}
+  ]},
+  { category: "Travel", phrases: [
+    {de:"Wo ist der Bahnhof?",en:"Where is the station?"},{de:"Ein Ticket nach Berlin, bitte.",en:"A ticket to Berlin, please."},
+    {de:"Wann fährt der Zug?",en:"When does the train leave?"},{de:"Ich brauche ein Taxi.",en:"I need a taxi."},
+    {de:"Wo ist die Haltestelle?",en:"Where is the stop?"},{de:"Ich habe eine Reservierung.",en:"I have a reservation."}
+  ]},
+  { category: "Restaurant", phrases: [
+    {de:"Die Speisekarte, bitte.",en:"The menu, please."},{de:"Ich möchte bestellen.",en:"I would like to order."},
+    {de:"Ohne Zucker, bitte.",en:"Without sugar, please."},{de:"Ich bin allergisch.",en:"I am allergic."},
+    {de:"Die Rechnung, bitte.",en:"The bill, please."},{de:"Es war lecker.",en:"It was delicious."}
+  ]},
+  { category: "Shopping", phrases: [
+    {de:"Wie viel kostet das?",en:"How much does that cost?"},{de:"Haben Sie Größe M?",en:"Do you have size M?"},
+    {de:"Gibt es das in Blau?",en:"Is it available in blue?"},{de:"Ich möchte das kaufen.",en:"I want to buy that."},
+    {de:"Mit Karte, bitte.",en:"By card, please."},{de:"Haben Sie Wechselgeld?",en:"Do you have change?"}
+  ]},
+  { category: "Directions", phrases: [
+    {de:"Entschuldigung, wo ist...?",en:"Excuse me, where is...?"},{de:"Geradeaus.",en:"Straight ahead."},
+    {de:"Dann links.",en:"Then left."},{de:"Dann rechts.",en:"Then right."},
+    {de:"In der Nähe.",en:"Nearby."},{de:"Zu Fuß oder mit dem Bus?",en:"On foot or by bus?"}
+  ]},
+  { category: "Emergency", phrases: [
+    {de:"Hilfe!",en:"Help!"},{de:"Ich brauche einen Arzt.",en:"I need a doctor."},
+    {de:"Rufen Sie die Polizei!",en:"Call the police!"},{de:"Ich habe meine Tasche verloren.",en:"I lost my bag."},
+    {de:"Ich bin verletzt.",en:"I am injured."},{de:"Hier ist mein Ausweis.",en:"Here is my ID."}
+  ]}
+];
+const GRAMMAR_TIPS = [
+  "The verb is in position 2 in normal statements: Heute lerne ich.",
+  "Questions often start with the verb: Kommst du heute?",
+  "Nouns are always capitalized in German.",
+  "Use der/die/das for masculine/feminine/neuter nouns.",
+  "Negation: nicht for verbs/adjectives, kein for nouns without articles.",
+  "Time order is often: time → place → manner (TeKaMoLo).",
+  "Separable verbs split: Ich stehe um 7 Uhr auf.",
+  "Use gern to say you like doing something: Ich lese gern."
 ];
 const FULL_A1 = [
-  {de:"Hallo",en:"Hello"},{de:"Tschüss",en:"Bye"},{de:"Danke",en:"Thanks"},{de:"Bitte",en:"Please"},
-  {de:"eins",en:"one"},{de:"zwei",en:"two"},{de:"drei",en:"three"},{de:"vier",en:"four"},
-  {de:"fünf",en:"five"},{de:"lernen",en:"to learn"},{de:"machen",en:"to do"},{de:"sprechen",en:"to speak"},
-  {de:"wohnen",en:"to live"},{de:"ich bin",en:"I am"},{de:"du bist",en:"you are"},
-  {de:"haben",en:"to have"},{de:"ich habe",en:"I have"},{de:"der Tisch",en:"table"},
-  {de:"die Lampe",en:"lamp"},{de:"das Buch",en:"book"}
+  {de:"Hallo",en:"Hello"},{de:"Guten Morgen",en:"Good morning"},{de:"Guten Abend",en:"Good evening"},{de:"Gute Nacht",en:"Good night"},
+  {de:"Tschüss",en:"Bye"},{de:"Auf Wiedersehen",en:"Goodbye"},{de:"Bitte",en:"Please/You're welcome"},{de:"Danke",en:"Thanks"},
+  {de:"Danke schön",en:"Thank you very much"},{de:"Entschuldigung",en:"Excuse me"},{de:"Wie geht es dir?",en:"How are you?"},
+  {de:"Mir geht es gut.",en:"I am doing well."},{de:"Ich heiße",en:"My name is"},{de:"Mein Name ist",en:"My name is"},
+  {de:"Freut mich",en:"Nice to meet you"},
+  {de:"ich",en:"I"},{de:"du",en:"you (informal)"},{de:"er",en:"he"},{de:"sie",en:"she/they"},
+  {de:"es",en:"it"},{de:"wir",en:"we"},{de:"ihr",en:"you (plural)"},{de:"Sie",en:"you (formal)"},
+  {de:"null",en:"zero"},{de:"eins",en:"one"},{de:"zwei",en:"two"},{de:"drei",en:"three"},{de:"vier",en:"four"},
+  {de:"fünf",en:"five"},{de:"sechs",en:"six"},{de:"sieben",en:"seven"},{de:"acht",en:"eight"},{de:"neun",en:"nine"},
+  {de:"zehn",en:"ten"},{de:"elf",en:"eleven"},{de:"zwölf",en:"twelve"},{de:"dreizehn",en:"thirteen"},
+  {de:"vierzehn",en:"fourteen"},{de:"fünfzehn",en:"fifteen"},{de:"sechzehn",en:"sixteen"},
+  {de:"siebzehn",en:"seventeen"},{de:"achtzehn",en:"eighteen"},{de:"neunzehn",en:"nineteen"},{de:"zwanzig",en:"twenty"},
+  {de:"Montag",en:"Monday"},{de:"Dienstag",en:"Tuesday"},{de:"Mittwoch",en:"Wednesday"},{de:"Donnerstag",en:"Thursday"},
+  {de:"Freitag",en:"Friday"},{de:"Samstag",en:"Saturday"},{de:"Sonntag",en:"Sunday"},
+  {de:"Januar",en:"January"},{de:"Februar",en:"February"},{de:"März",en:"March"},{de:"April",en:"April"},
+  {de:"Mai",en:"May"},{de:"Juni",en:"June"},{de:"Juli",en:"July"},{de:"August",en:"August"},
+  {de:"September",en:"September"},{de:"Oktober",en:"October"},{de:"November",en:"November"},{de:"Dezember",en:"December"},
+  {de:"rot",en:"red"},{de:"blau",en:"blue"},{de:"grün",en:"green"},{de:"gelb",en:"yellow"},
+  {de:"schwarz",en:"black"},{de:"weiß",en:"white"},{de:"braun",en:"brown"},{de:"grau",en:"gray"},
+  {de:"die Mutter",en:"mother"},{de:"der Vater",en:"father"},{de:"die Eltern",en:"parents"},{de:"die Schwester",en:"sister"},
+  {de:"der Bruder",en:"brother"},{de:"die Familie",en:"family"},{de:"das Kind",en:"child"},{de:"der Sohn",en:"son"},
+  {de:"die Tochter",en:"daughter"},{de:"der Freund",en:"friend (male)"},{de:"die Freundin",en:"friend (female)"},
+  {de:"der Mann",en:"man/husband"},{de:"die Frau",en:"woman/wife"},
+  {de:"das Wasser",en:"water"},{de:"der Kaffee",en:"coffee"},{de:"der Tee",en:"tea"},{de:"das Brot",en:"bread"},
+  {de:"die Suppe",en:"soup"},{de:"der Apfel",en:"apple"},{de:"die Banane",en:"banana"},{de:"das Obst",en:"fruit"},
+  {de:"das Gemüse",en:"vegetables"},{de:"das Frühstück",en:"breakfast"},{de:"das Mittagessen",en:"lunch"},{de:"das Abendessen",en:"dinner"},
+  {de:"die Milch",en:"milk"},{de:"der Käse",en:"cheese"},{de:"das Ei",en:"egg"},
+  {de:"das Haus",en:"house"},{de:"die Wohnung",en:"apartment"},{de:"das Zimmer",en:"room"},{de:"die Küche",en:"kitchen"},
+  {de:"das Bad",en:"bathroom"},{de:"das Bett",en:"bed"},{de:"der Tisch",en:"table"},{de:"der Stuhl",en:"chair"},
+  {de:"die Lampe",en:"lamp"},{de:"das Fenster",en:"window"},{de:"die Tür",en:"door"},
+  {de:"der Bahnhof",en:"train station"},{de:"der Flughafen",en:"airport"},{de:"der Zug",en:"train"},{de:"der Bus",en:"bus"},
+  {de:"das Ticket",en:"ticket"},{de:"die Karte",en:"map"},{de:"die Straße",en:"street"},{de:"links",en:"left"},
+  {de:"rechts",en:"right"},{de:"geradeaus",en:"straight ahead"},{de:"der Weg",en:"way/path"},
+  {de:"der Preis",en:"price"},{de:"teuer",en:"expensive"},{de:"billig",en:"cheap"},{de:"die Kasse",en:"checkout"},
+  {de:"bezahlen",en:"to pay"},{de:"das Geld",en:"money"},{de:"die Rechnung",en:"bill/receipt"},
+  {de:"der Markt",en:"market"},{de:"das Geschäft",en:"shop"},
+  {de:"sein",en:"to be"},{de:"haben",en:"to have"},{de:"gehen",en:"to go"},{de:"kommen",en:"to come"},
+  {de:"machen",en:"to do/make"},{de:"lernen",en:"to learn"},{de:"sprechen",en:"to speak"},
+  {de:"essen",en:"to eat"},{de:"trinken",en:"to drink"},{de:"wohnen",en:"to live"},
+  {de:"arbeiten",en:"to work"},{de:"spielen",en:"to play"},{de:"lesen",en:"to read"},
+  {de:"schreiben",en:"to write"},{de:"hören",en:"to hear"},{de:"sehen",en:"to see"},
+  {de:"brauchen",en:"to need"},{de:"wollen",en:"to want"},{de:"müssen",en:"must"},
+  {de:"können",en:"can"},{de:"mögen",en:"to like"},{de:"fahren",en:"to drive/go"},
+  {de:"kaufen",en:"to buy"},{de:"fragen",en:"to ask"},{de:"antworten",en:"to answer"},
+  {de:"treffen",en:"to meet"},{de:"heute",en:"today"},{de:"morgen",en:"tomorrow"},
+  {de:"gestern",en:"yesterday"},{de:"jetzt",en:"now"},{de:"später",en:"later"},
+  {de:"früh",en:"early"},{de:"spät",en:"late"},{de:"Uhr",en:"o'clock"},
+  {de:"Minute",en:"minute"},{de:"Stunde",en:"hour"},
+  {de:"wer",en:"who"},{de:"was",en:"what"},{de:"wann",en:"when"},
+  {de:"wo",en:"where"},{de:"warum",en:"why"},{de:"wie",en:"how"},
+  {de:"wie viel",en:"how much"},{de:"wie viele",en:"how many"},
+  {de:"gut",en:"good"},{de:"schlecht",en:"bad"},{de:"groß",en:"big"},
+  {de:"klein",en:"small"},{de:"neu",en:"new"},{de:"alt",en:"old"},
+  {de:"warm",en:"warm"},{de:"kalt",en:"cold"},{de:"schön",en:"beautiful"},
+  {de:"interessant",en:"interesting"},{de:"wichtig",en:"important"},{de:"langsam",en:"slow"},
+  {de:"schnell",en:"fast"},
+  {de:"der Arzt",en:"doctor"},{de:"die Apotheke",en:"pharmacy"},{de:"Hilfe",en:"help"},
+  {de:"krank",en:"sick"},{de:"gesund",en:"healthy"},{de:"die Schmerzen",en:"pain"},
+  {de:"der Sport",en:"sport"},{de:"die Musik",en:"music"},{de:"das Kino",en:"cinema"},
+  {de:"das Buch",en:"book"},{de:"die Reise",en:"trip"},{de:"der Spaziergang",en:"walk"}
 ];
 let appData = {
   xp: 0, streak: 0, lastActiveDate: null, completedLessons: {}, dailyTasks:{}, reflections: [], srsWords:{}, mistakeLog:[]
@@ -249,7 +613,10 @@ window.reviewWord = function(word, difficulty) {
 };
 // ========== XP, UI, SPEECH, GAMES ==============
 function addXP(amount) { appData.xp+=amount; document.getElementById("xpValue").innerText=appData.xp; save(); }
-let currentSpeeches = ["Guten Morgen","Ich lerne Deutsch","Danke schön","Auf Wiedersehen","Wie geht es dir?"];
+let currentSpeeches = [
+  "Guten Morgen","Guten Abend","Ich heiße Amir","Ich lerne Deutsch","Wie geht es dir?",
+  "Ich möchte einen Kaffee","Wo ist der Bahnhof?","Ich brauche Hilfe","Das ist meine Familie","Ich gehe gern spazieren"
+];
 let speechIndex = 0;
 function speakText(text) {
   let u = new SpeechSynthesisUtterance(text);
@@ -300,7 +667,10 @@ function initSpeech() {
 const gameSentences = [
   { words: ["ich","lerne","Deutsch"], correct: "ich lerne Deutsch" },
   { words: ["du","bist","gut"], correct: "du bist gut" },
-  { words: ["wir","spielen","Fußball"], correct: "wir spielen Fußball" }
+  { words: ["wir","spielen","Fußball"], correct: "wir spielen Fußball" },
+  { words: ["sie","kommt","morgen"], correct: "sie kommt morgen" },
+  { words: ["ich","trinke","Wasser"], correct: "ich trinke Wasser" },
+  { words: ["er","fährt","nach","Berlin"], correct: "er fährt nach Berlin" }
 ];
 let currentGame = 0, selectedOrder = [];
 function loadGame() {
@@ -527,6 +897,91 @@ function renderDailyTasks() {
     });
   });
 }
+function renderLessonLibrary() {
+  let moduleSelect = document.getElementById("lessonModuleSelect");
+  let lessonSelect = document.getElementById("lessonSelect");
+  if (!moduleSelect || !lessonSelect) return;
+  moduleSelect.innerHTML = LESSON_LIBRARY.map(m => `<option value="${m.moduleId}">${m.title}</option>`).join("");
+  moduleSelect.onchange = () => updateLessonOptions();
+  lessonSelect.onchange = () => renderLessonContent();
+  document.getElementById("toggleLessonBtn").onclick = () => toggleLessonCompletion();
+  updateLessonOptions();
+}
+function updateLessonOptions() {
+  let moduleId = parseInt(document.getElementById("lessonModuleSelect").value, 10);
+  let module = LESSON_LIBRARY.find(m => m.moduleId === moduleId) || LESSON_LIBRARY[0];
+  let lessonSelect = document.getElementById("lessonSelect");
+  lessonSelect.innerHTML = module.lessons.map((lesson, index) => `<option value="${index}">${lesson.title}</option>`).join("");
+  renderLessonContent();
+}
+function renderLessonContent() {
+  let moduleId = parseInt(document.getElementById("lessonModuleSelect").value, 10);
+  let lessonIndex = parseInt(document.getElementById("lessonSelect").value, 10);
+  let module = LESSON_LIBRARY.find(m => m.moduleId === moduleId);
+  if (!module || !module.lessons[lessonIndex]) return;
+  let lesson = module.lessons[lessonIndex];
+  let goals = lesson.goals.map(g => `<li>${g}</li>`).join("");
+  let phrases = lesson.phrases.map(p => `<div class="phrase-item"><div>${p.de}</div><span>${p.en}</span></div>`).join("");
+  let isDone = appData.completedLessons[`${moduleId}_${lessonIndex}`];
+  document.getElementById("toggleLessonBtn").innerText = isDone ? "Mark Incomplete" : "Mark Completed";
+  document.getElementById("lessonContent").innerHTML = `
+    <h4>${lesson.title}</h4>
+    <div><strong>Goals</strong></div>
+    <ul class="lesson-goals">${goals}</ul>
+    <div><strong>Core Phrases</strong></div>
+    <div style="display:grid; gap:8px;">${phrases}</div>
+  `;
+}
+function toggleLessonCompletion() {
+  let moduleId = parseInt(document.getElementById("lessonModuleSelect").value, 10);
+  let lessonIndex = parseInt(document.getElementById("lessonSelect").value, 10);
+  let key = `${moduleId}_${lessonIndex}`;
+  let nextValue = !appData.completedLessons[key];
+  appData.completedLessons[key] = nextValue;
+  if (nextValue) { addXP(10); showToast("Lesson completed! +10 XP"); }
+  save(); renderModules(); refreshAll(); renderLessonContent();
+}
+function renderPhrasebook(activeCategory) {
+  let tabs = document.getElementById("phrasebookTabs");
+  let list = document.getElementById("phrasebookList");
+  if (!tabs || !list) return;
+  let current = activeCategory || PHRASEBOOK[0].category;
+  tabs.innerHTML = PHRASEBOOK.map(p => `<div class="phrasebook-chip ${p.category===current?'active':''}" data-cat="${p.category}">${p.category}</div>`).join("");
+  let selected = PHRASEBOOK.find(p => p.category === current) || PHRASEBOOK[0];
+  list.innerHTML = selected.phrases.map(p => `<div class="phrase-item"><div>${p.de}</div><span>${p.en}</span></div>`).join("");
+  tabs.querySelectorAll(".phrasebook-chip").forEach(el => {
+    el.onclick = () => renderPhrasebook(el.dataset.cat);
+  });
+}
+function renderGrammarTips() {
+  let list = document.getElementById("grammarTips");
+  if (!list) return;
+  list.innerHTML = GRAMMAR_TIPS.map(t => `<li>${t}</li>`).join("");
+}
+function updateApiKeyStatus() {
+  HAS_API_KEY = GEMINI_API_KEY.trim().length > 0;
+  let status = document.getElementById("apiKeyStatus");
+  if (status) status.innerText = HAS_API_KEY ? "Connected" : "Not set";
+}
+function setupApiKeyControls() {
+  let input = document.getElementById("apiKeyInput");
+  if (!input) return;
+  input.value = GEMINI_API_KEY;
+  document.getElementById("saveApiKeyBtn").onclick = () => {
+    GEMINI_API_KEY = input.value.trim();
+    localStorage.setItem("gemini_api_key", GEMINI_API_KEY);
+    updateApiKeyStatus();
+    showToast(HAS_API_KEY ? "API key saved." : "API key cleared.");
+  };
+  document.getElementById("clearApiKeyBtn").onclick = () => {
+    GEMINI_API_KEY = "";
+    localStorage.removeItem("gemini_api_key");
+    input.value = "";
+    updateApiKeyStatus();
+    showToast("API key cleared.");
+  };
+  updateApiKeyStatus();
+}
 function updateAdaptive() {
   let mistakeCount = appData.mistakeLog.length;
   document.getElementById("mistakeCount").innerText = mistakeCount;
@@ -570,9 +1025,18 @@ document.getElementById("focusModeBtn").onclick = ()=>{
   document.getElementById("exitFocusBtn").onclick = ()=>{ blocker.remove(); };
   document.addEventListener('keydown', function escHandler(e){if(e.key==='Escape'){blocker.remove();document.removeEventListener('keydown',escHandler);}});
 };
-load(); renderModules(); renderDailyTasks(); initSpeech(); loadGame(); refreshAll();
+load();
+renderModules();
+renderDailyTasks();
+renderLessonLibrary();
+renderPhrasebook();
+renderGrammarTips();
+setupApiKeyControls();
+initSpeech();
+loadGame();
+refreshAll();
 setInterval(()=>{ checkReset(); refreshAll(); },60000);
-if(!HAS_API_KEY) showToast("🔑 Get your free Gemini API key at aistudio.google.com, paste it in the code for full AI features!");
+if(!HAS_API_KEY) showToast("🔑 Get your free Gemini API key at aistudio.google.com and add it in the AI Tutor panel for full AI features!");
 // Add these functions if they're missing:
 
 async function generateQuiz() {
