@@ -67,6 +67,17 @@
     .tips-list { margin-left: 18px; line-height: 1.6; }
     .api-key-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .api-key-input { flex: 1; min-width: 220px; }
+    .course-library details { background: rgba(0,0,0,0.25); border: 1px solid rgba(76,175,80,0.2); border-radius: 16px; padding: 12px 16px; margin-top: 12px; }
+    .course-library summary { cursor: pointer; font-weight: 600; color: #c8e6c9; }
+    .course-section-body { margin-top: 10px; display: grid; gap: 14px; }
+    .course-block h4 { margin-bottom: 6px; color: #c8e6c9; }
+    .course-table-wrapper { overflow-x: auto; }
+    .course-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    .course-table th, .course-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .course-dialogue { background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px 12px; }
+    .course-dialogue-line { margin: 4px 0; }
+    .course-writing { background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px 12px; white-space: pre-line; }
+    .course-checklist label { display: block; margin: 6px 0; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 </head>
@@ -131,6 +142,10 @@
       <div class="glass-card" style="margin-top:20px;">
         <h3><i class="fas fa-pen"></i> Grammar Quick Tips</h3>
         <ul id="grammarTips" class="tips-list"></ul>
+      </div>
+      <div class="glass-card course-library" style="margin-top:20px;">
+        <h3><i class="fas fa-book"></i> Complete A1 Course Content</h3>
+        <div id="courseLibrary"></div>
       </div>
       <!-- Games & Speech area -->
       <div class="glass-card" style="margin-top:20px;">
@@ -490,6 +505,467 @@ const GRAMMAR_TIPS = [
   "Separable verbs split: Ich stehe um 7 Uhr auf.",
   "Use gern to say you like doing something: Ich lese gern."
 ];
+const CORE_VOCAB = [
+  { title: "Greetings & Goodbyes", headers: ["German", "English"], rows: [
+    ["Hallo", "Hello"], ["Guten Morgen", "Good morning"], ["Guten Tag", "Good day / Hello"],
+    ["Guten Abend", "Good evening"], ["Gute Nacht", "Good night"], ["Tschüss", "Bye"],
+    ["Auf Wiedersehen", "Goodbye"], ["Bis bald", "See you soon"], ["Bis später", "See you later"],
+    ["Bis morgen", "See you tomorrow"], ["Servus", "Hi/Bye (southern Germany/Austria)"],
+    ["Grüß Gott", "Greetings (Bavaria/Austria)"]
+  ]},
+  { title: "Polite Phrases", headers: ["German", "English"], rows: [
+    ["Bitte", "Please / You're welcome"], ["Danke", "Thank you"], ["Danke schön", "Thank you very much"],
+    ["Vielen Dank", "Many thanks"], ["Entschuldigung", "Excuse me / Sorry"], ["Es tut mir leid", "I'm sorry"],
+    ["Kein Problem", "No problem"], ["Gern geschehen", "My pleasure"], ["Wie bitte?", "Pardon?"]
+  ]},
+  { title: "Numbers 0-100", headers: ["Number", "German", "Number", "German"], rows: [
+    ["0", "null", "15", "fünfzehn"], ["1", "eins", "16", "sechzehn"], ["2", "zwei", "17", "siebzehn"],
+    ["3", "drei", "18", "achtzehn"], ["4", "vier", "19", "neunzehn"], ["5", "fünf", "20", "zwanzig"],
+    ["6", "sechs", "21", "einundzwanzig"], ["7", "sieben", "22", "zweiundzwanzig"],
+    ["8", "acht", "30", "dreißig"], ["9", "neun", "40", "vierzig"], ["10", "zehn", "50", "fünfzig"],
+    ["11", "elf", "60", "sechzig"], ["12", "zwölf", "70", "siebzig"], ["13", "dreizehn", "80", "achtzig"],
+    ["14", "vierzehn", "90", "neunzig"], ["-", "-", "100", "(ein)hundert"]
+  ]},
+  { title: "Days of the Week", headers: ["German", "English", "Abbreviation"], rows: [
+    ["Montag", "Monday", "Mo"], ["Dienstag", "Tuesday", "Di"], ["Mittwoch", "Wednesday", "Mi"],
+    ["Donnerstag", "Thursday", "Do"], ["Freitag", "Friday", "Fr"], ["Samstag", "Saturday", "Sa"],
+    ["Sonntag", "Sunday", "So"], ["Wochenende", "Weekend", "-"], ["Werktag", "Weekday", "-"]
+  ]},
+  { title: "Months & Seasons", headers: ["Month", "German", "Season", "German"], rows: [
+    ["January", "Januar", "Spring", "Frühling"], ["February", "Februar", "Summer", "Sommer"],
+    ["March", "März", "Autumn", "Herbst"], ["April", "April", "Winter", "Winter"], ["May", "Mai", "-", "-"],
+    ["June", "Juni", "-", "-"], ["July", "Juli", "-", "-"], ["August", "August", "-", "-"],
+    ["September", "September", "-", "-"], ["October", "Oktober", "-", "-"], ["November", "November", "-", "-"],
+    ["December", "Dezember", "-", "-"]
+  ]},
+  { title: "Time Expressions", headers: ["German", "English"], rows: [
+    ["Wie spät ist es?", "What time is it?"], ["Es ist... Uhr", "It's ... o'clock"], ["halb", "half past"],
+    ["Viertel", "quarter"], ["nach", "past"], ["vor", "to / before"], ["morgens", "in the morning"],
+    ["mittags", "at noon"], ["nachmittags", "in the afternoon"], ["abends", "in the evening"],
+    ["nachts", "at night"], ["heute", "today"], ["morgen", "tomorrow"], ["gestern", "yesterday"],
+    ["jetzt", "now"], ["bald", "soon"], ["immer", "always"], ["manchmal", "sometimes"], ["nie", "never"]
+  ]},
+  { title: "Family Members", headers: ["German", "English", "Plural"], rows: [
+    ["die Mutter", "mother", "die Mütter"], ["der Vater", "father", "die Väter"],
+    ["die Schwester", "sister", "die Schwestern"], ["der Bruder", "brother", "die Brüder"],
+    ["die Tochter", "daughter", "die Töchter"], ["der Sohn", "son", "die Söhne"],
+    ["die Oma", "grandma", "die Omas"], ["der Opa", "grandpa", "die Opas"],
+    ["die Tante", "aunt", "die Tanten"], ["der Onkel", "uncle", "die Onkel"],
+    ["der Cousin", "cousin (male)", "die Cousins"], ["die Cousine", "cousin (female)", "die Cousinen"],
+    ["die Frau", "wife / woman", "die Frauen"], ["der Mann", "husband / man", "die Männer"],
+    ["das Kind", "child", "die Kinder"], ["das Baby", "baby", "die Babys"],
+    ["die Familie", "family", "die Familien"]
+  ]},
+  { title: "Food & Drinks", sections: [
+    { title: "Food", headers: ["German", "English"], rows: [
+      ["das Brot", "bread"], ["der Käse", "cheese"], ["die Wurst", "sausage"], ["der Schinken", "ham"],
+      ["das Ei", "egg"], ["die Suppe", "soup"], ["der Salat", "salad"], ["die Pizza", "pizza"],
+      ["der Reis", "rice"], ["die Nudeln", "pasta/noodles"], ["das Fleisch", "meat"],
+      ["das Gemüse", "vegetables"], ["der Fisch", "fish"], ["das Obst", "fruit"], ["der Apfel", "apple"],
+      ["die Banane", "banana"], ["die Orange", "orange"], ["die Erdbeere", "strawberry"]
+    ]},
+    { title: "Drinks", headers: ["German", "English"], rows: [
+      ["das Wasser", "water"], ["der Kaffee", "coffee"], ["der Tee", "tea"], ["der Saft", "juice"],
+      ["die Milch", "milk"], ["das Bier", "beer"], ["der Wein", "wine"], ["die Limonade", "lemonade"]
+    ]}
+  ]},
+  { title: "Colors", headers: ["German", "English"], rows: [
+    ["rot", "red"], ["blau", "blue"], ["gelb", "yellow"], ["grün", "green"], ["schwarz", "black"],
+    ["weiß", "white"], ["grau", "gray"], ["braun", "brown"], ["orange", "orange"], ["rosa / pink", "pink"],
+    ["lila", "purple"], ["bunt", "colorful"]
+  ]},
+  { title: "Adjectives (Describing Words)", headers: ["German", "English"], rows: [
+    ["gut", "good"], ["schlecht", "bad"], ["groß", "big/tall"], ["klein", "small"], ["neu", "new"],
+    ["alt", "old"], ["jung", "young"], ["schön", "beautiful"], ["hässlich", "ugly"],
+    ["teuer", "expensive"], ["billig", "cheap"], ["schnell", "fast"], ["langsam", "slow"],
+    ["leicht", "easy/light"], ["schwer", "difficult/heavy"], ["warm", "warm"], ["kalt", "cold"],
+    ["glücklich", "happy"], ["traurig", "sad"], ["müde", "tired"], ["hungrig", "hungry"],
+    ["durstig", "thirsty"], ["interessant", "interesting"], ["langweilig", "boring"]
+  ]},
+  { title: "Weather & Nature", headers: ["German", "English"], rows: [
+    ["die Sonne", "sun"], ["der Regen", "rain"], ["der Schnee", "snow"], ["der Wind", "wind"],
+    ["die Wolke", "cloud"], ["der Himmel", "sky"], ["der Baum", "tree"], ["die Blume", "flower"],
+    ["das Gras", "grass"], ["der Wald", "forest"], ["der See", "lake"], ["das Meer", "ocean"],
+    ["der Berg", "mountain"], ["Es ist sonnig", "It's sunny"], ["Es regnet", "It's raining"],
+    ["Es schneit", "It's snowing"], ["Es ist windig", "It's windy"], ["Es ist warm/kalt", "It's warm/cold"]
+  ]},
+  { title: "Body Parts", headers: ["German", "English"], rows: [
+    ["der Kopf", "head"], ["das Haar", "hair"], ["das Auge", "eye"], ["die Nase", "nose"],
+    ["der Mund", "mouth"], ["das Ohr", "ear"], ["der Zahn", "tooth"], ["die Hand", "hand"],
+    ["der Finger", "finger"], ["der Arm", "arm"], ["der Fuß", "foot"], ["das Bein", "leg"],
+    ["der Bauch", "belly"], ["das Herz", "heart"]
+  ]},
+  { title: "Clothing", headers: ["German", "English"], rows: [
+    ["das Hemd", "shirt"], ["die Bluse", "blouse"], ["das T-Shirt", "T-shirt"], ["die Hose", "pants"],
+    ["die Jeans", "jeans"], ["der Rock", "skirt"], ["das Kleid", "dress"], ["die Jacke", "jacket"],
+    ["der Mantel", "coat"], ["der Schuh", "shoe"], ["die Socke", "sock"], ["der Hut", "hat"],
+    ["die Mütze", "cap"], ["der Schal", "scarf"]
+  ]},
+  { title: "House & Furniture", sections: [
+    { title: "Rooms", headers: ["German", "English"], rows: [
+      ["das Wohnzimmer", "living room"], ["die Küche", "kitchen"], ["das Schlafzimmer", "bedroom"],
+      ["das Badezimmer", "bathroom"], ["der Flur", "hallway"], ["der Garten", "garden"]
+    ]},
+    { title: "Furniture", headers: ["German", "English"], rows: [
+      ["der Tisch", "table"], ["der Stuhl", "chair"], ["das Bett", "bed"], ["der Schrank", "closet/cabinet"],
+      ["die Lampe", "lamp"], ["das Fenster", "window"], ["die Tür", "door"], ["der Spiegel", "mirror"],
+      ["das Sofa", "sofa"], ["der Teppich", "rug"]
+    ]}
+  ]},
+  { title: "Transportation", headers: ["German", "English"], rows: [
+    ["das Auto", "car"], ["der Bus", "bus"], ["die Bahn", "train"], ["die Straßenbahn", "tram"],
+    ["die U-Bahn", "subway"], ["das Taxi", "taxi"], ["das Fahrrad", "bicycle"], ["das Motorrad", "motorcycle"],
+    ["das Flugzeug", "airplane"], ["das Schiff", "ship"], ["der Flughafen", "airport"], ["der Bahnhof", "train station"],
+    ["die Haltestelle", "bus stop"], ["das Ticket", "ticket"], ["der Fahrplan", "schedule"]
+  ]},
+  { title: "Professions", headers: ["German", "English"], rows: [
+    ["der Arzt / die Ärztin", "doctor"], ["die Lehrerin / der Lehrer", "teacher"],
+    ["der Student / die Studentin", "student"], ["der Ingenieur / die Ingenieurin", "engineer"],
+    ["der Koch / die Köchin", "cook/chef"], ["der Fahrer / die Fahrerin", "driver"],
+    ["der Verkäufer / die Verkäuferin", "salesperson"], ["der Polizist / die Polizistin", "police officer"],
+    ["der Anwalt / die Anwältin", "lawyer"], ["der Kellner / die Kellnerin", "waiter"],
+    ["der Künstler / die Künstlerin", "artist"]
+  ]}
+];
+const GRAMMAR_LIBRARY = [
+  { title: "Articles (Der, Die, Das)", sections: [
+    { title: "Definite Articles (The)", headers: ["Case", "Masculine", "Feminine", "Neuter", "Plural"], rows: [
+      ["Nominative", "der", "die", "das", "die"], ["Accusative", "den", "die", "das", "die"],
+      ["Dative", "dem", "der", "dem", "den"], ["Genitive", "des", "der", "des", "der"]
+    ]},
+    { title: "Indefinite Articles (A/An)", headers: ["Case", "Masculine", "Feminine", "Neuter"], rows: [
+      ["Nominative", "ein", "eine", "ein"], ["Accusative", "einen", "eine", "ein"],
+      ["Dative", "einem", "einer", "einem"]
+    ]},
+    { title: "Noun Gender Tips", headers: ["Usually Masculine (der)", "Usually Feminine (die)", "Usually Neuter (das)"], rows: [
+      ["Days, months, seasons", "-heit, -keit, -ung endings", "-chen, -lein endings"],
+      ["Weather", "-ie endings", "Infinitives used as nouns"],
+      ["Alcoholic drinks", "Most flowers and trees", "Metals and chemicals"],
+      ["Car brands", "Numbers", "Young animals"]
+    ]}
+  ]},
+  { title: "Personal Pronouns", headers: ["Person", "Nominative", "Accusative", "Dative"], rows: [
+    ["I", "ich", "mich", "mir"], ["You (informal)", "du", "dich", "dir"], ["He", "er", "ihn", "ihm"],
+    ["She", "sie", "sie", "ihr"], ["It", "es", "es", "ihm"], ["We", "wir", "uns", "uns"],
+    ["You all", "ihr", "euch", "euch"], ["They", "sie", "sie", "ihnen"], ["You (formal)", "Sie", "Sie", "Ihnen"]
+  ]},
+  { title: "Regular Verb Conjugation (Present Tense)", text: ["Pattern: remove -en, add endings."], sections: [
+    { title: "Example: lernen (to learn)", headers: ["Pronoun", "Ending", "Example"], rows: [
+      ["ich", "-e", "ich lerne"], ["du", "-st", "du lernst"], ["er/sie/es", "-t", "er lernt"],
+      ["wir", "-en", "wir lernen"], ["ihr", "-t", "ihr lernt"], ["sie/Sie", "-en", "sie lernen"]
+    ]},
+    { title: "Common Regular Verbs", list: [
+      "machen (to do/make)", "wohnen (to live)", "kommen (to come)", "gehen (to go)", "sagen (to say)",
+      "fragen (to ask)", "hören (to hear)", "spielen (to play)", "arbeiten (to work) adds -e- before endings"
+    ]}
+  ]},
+  { title: "Irregular Verbs (Most Important)", sections: [
+    { title: "sein (to be)", headers: ["German", "English"], rows: [
+      ["ich bin", "I am"], ["du bist", "you are"], ["er/sie/es ist", "he/she/it is"],
+      ["wir sind", "we are"], ["ihr seid", "you all are"], ["sie/Sie sind", "they/you are"]
+    ]},
+    { title: "haben (to have)", headers: ["German", "English"], rows: [
+      ["ich habe", "I have"], ["du hast", "you have"], ["er/sie/es hat", "he/she/it has"],
+      ["wir haben", "we have"], ["ihr habt", "you all have"], ["sie/Sie haben", "they/you have"]
+    ]},
+    { title: "werden (to become)", headers: ["German", "English"], rows: [
+      ["ich werde", "I become"], ["du wirst", "you become"], ["er/sie/es wird", "he/she/it becomes"],
+      ["wir werden", "we become"], ["ihr werdet", "you all become"], ["sie/Sie werden", "they/you become"]
+    ]},
+    { title: "Modal Verbs", headers: ["", "können", "müssen", "wollen", "dürfen", "sollen", "mögen"], rows: [
+      ["ich", "kann", "muss", "will", "darf", "soll", "mag"],
+      ["du", "kannst", "musst", "willst", "darfst", "sollst", "magst"],
+      ["er/sie/es", "kann", "muss", "will", "darf", "soll", "mag"],
+      ["wir", "können", "müssen", "wollen", "dürfen", "sollen", "mögen"],
+      ["ihr", "könnt", "müsst", "wollt", "dürft", "sollt", "mögt"],
+      ["sie", "können", "müssen", "wollen", "dürfen", "sollen", "mögen"]
+    ]}
+  ]},
+  { title: "Sentence Structure", sections: [
+    { title: "Main Clause (verb in second position)", headers: ["Position 1", "Position 2", "Position 3+"], rows: [
+      ["Subject (Ich)", "VERB (lerne)", "Deutsch"]
+    ]},
+    { title: "Question Sentence (verb first)", headers: ["Position 1", "Position 2", "Position 3+"], rows: [
+      ["VERB (Lernst)", "Subject (du)", "Deutsch?"]
+    ]},
+    { title: "W-Questions (question word first)", list: [
+      "Wer? (Who?)", "Was? (What?)", "Wo? (Where?)", "Wann? (When?)", "Warum? (Why?)",
+      "Wie? (How?)", "Welche/r/s? (Which?)"
+    ]},
+    { title: "Subordinate Clauses (verb at end)", text: [
+      "weil (because), dass (that), wenn (if/when), ob (whether)",
+      "Example: Ich lerne Deutsch, weil ich in Berlin wohne."
+    ]}
+  ]},
+  { title: "Cases", sections: [
+    { title: "Nominative (Subject)", list: [
+      "The “who” or “what” doing the action",
+      "Der Hund schläft. (The dog sleeps)"
+    ]},
+    { title: "Accusative (Direct Object)", list: [
+      "The “who” or “what” receiving the action",
+      "Ich sehe den Hund. (I see the dog)"
+    ]},
+    { title: "Dative (Indirect Object)", list: [
+      "The “to whom” or “for whom”",
+      "Ich gebe dem Hund Wasser. (I give water to the dog)"
+    ]},
+    { title: "Dative Prepositions (always dative)", headers: ["German", "English"], rows: [
+      ["aus", "out of / from"], ["bei", "at / near"], ["mit", "with"], ["nach", "after / to"],
+      ["von", "from / of"], ["zu", "to"], ["seit", "since"], ["außer", "except"]
+    ]},
+    { title: "Accusative Prepositions (always accusative)", headers: ["German", "English"], rows: [
+      ["durch", "through"], ["für", "for"], ["gegen", "against"], ["ohne", "without"], ["um", "around"]
+    ]},
+    { title: "Two-Way Prepositions (accusative or dative)", headers: ["German", "Meaning"], rows: [
+      ["in", "in/into"], ["auf", "on/onto"], ["unter", "under"], ["über", "over"], ["neben", "next to"],
+      ["zwischen", "between"], ["vor", "in front of"], ["hinter", "behind"]
+    ]},
+    { title: "Rule", text: ["Accusative = movement, Dative = location"] }
+  ]},
+  { title: "Possessive Articles", headers: ["", "My", "Your (informal)", "His", "Her", "Our", "Your (plural)", "Their", "Your (formal)"], rows: [
+    ["Masculine", "mein", "dein", "sein", "ihr", "unser", "euer", "ihr", "Ihr"],
+    ["Feminine", "meine", "deine", "seine", "ihre", "unsere", "eure", "ihre", "Ihre"],
+    ["Neuter", "mein", "dein", "sein", "ihr", "unser", "euer", "ihr", "Ihr"],
+    ["Plural", "meine", "deine", "seine", "ihre", "unsere", "eure", "ihre", "Ihre"]
+  ]},
+  { title: "Adjective Endings", sections: [
+    { title: "With Definite Article (der/die/das)", headers: ["Case", "Masculine", "Feminine", "Neuter", "Plural"], rows: [
+      ["Nominative", "-e", "-e", "-e", "-en"], ["Accusative", "-en", "-e", "-e", "-en"],
+      ["Dative", "-en", "-en", "-en", "-en"]
+    ]},
+    { title: "With Indefinite Article (ein/eine)", headers: ["Case", "Masculine", "Feminine", "Neuter"], rows: [
+      ["Nominative", "-er", "-e", "-es"], ["Accusative", "-en", "-e", "-es"], ["Dative", "-en", "-en", "-en"]
+    ]}
+  ]},
+  { title: "Comparative & Superlative", headers: ["Base", "Comparative (more)", "Superlative (most)"], rows: [
+    ["groß (big)", "größer", "am größten"], ["klein (small)", "kleiner", "am kleinsten"],
+    ["gut (good)", "besser", "am besten"], ["gern (gladly)", "lieber", "am liebsten"],
+    ["viel (much)", "mehr", "am meisten"]
+  ], text: [
+    "Der Tisch ist größer als der Stuhl. (The table is bigger than the chair)",
+    "Das ist der schönste Tag. (That's the most beautiful day)"
+  ]},
+  { title: "Separable Verbs", sections: [
+    { title: "Common Separable Verbs", headers: ["Verb", "Meaning", "Separated Example"], rows: [
+      ["aufstehen", "to get up", "Ich stehe um 7 Uhr auf"], ["anrufen", "to call", "Ich rufe dich an"],
+      ["einkaufen", "to shop", "Ich kaufe ein ein"], ["mitkommen", "to come along", "Kommst du mit?"],
+      ["weggehen", "to go away", "Ich gehe jetzt weg"]
+    ]},
+    { title: "Rule", text: ["Prefix goes to the end of the clause."] }
+  ]},
+  { title: "Past Tense (Präteritum - Simple Past)", headers: ["Verb", "ich", "du", "er/sie/es", "wir", "ihr", "sie"], rows: [
+    ["sein", "war", "warst", "war", "waren", "wart", "waren"],
+    ["haben", "hatte", "hattest", "hatte", "hatten", "hattet", "hatten"],
+    ["können", "konnte", "konntest", "konnte", "konnten", "konntet", "konnten"],
+    ["müssen", "musste", "musstest", "musste", "mussten", "musstet", "mussten"]
+  ]},
+  { title: "Negation", sections: [
+    { title: "nicht (not)", list: [
+      "Used with verbs and adjectives",
+      "Position: usually at the end or before what you're negating",
+      "Ich lerne nicht. (I'm not learning)"
+    ]},
+    { title: "kein/keine (no/not any)", list: [
+      "Used with nouns (instead of ein/eine)",
+      "Ich habe keinen Hund. (I don't have a dog / I have no dog)"
+    ]}
+  ]}
+];
+const DIALOGUES = [
+  { title: "Introducing Yourself", lines: [
+    "A: Hallo! Wie heißt du?", "B: Ich heiße Anna. Und du?", "A: Ich bin Thomas. Schön, dich kennenzulernen.",
+    "B: Mich auch! Woher kommst du?", "A: Ich komme aus Berlin. Und du?", "B: Aus München."
+  ]},
+  { title: "At a Restaurant", lines: [
+    "A: Guten Abend! Einen Tisch für zwei Personen, bitte.", "B: Ja, gerne. Hier entlang.",
+    "A: Die Speisekarte, bitte.", "B: Hier, bitte schön. Was möchten Sie trinken?",
+    "A: Ein Wasser und einen Kaffee, bitte.", "B: Möchten Sie schon bestellen?",
+    "A: Ja, ich hätte gerne die Pizza Margherita.", "B: Sehr gut. Kommt sofort.",
+    "A: Die Rechnung, bitte.", "B: Das macht 24 Euro.", "A: Hier sind 30 Euro. Stimmt so.",
+    "B: Vielen Dank! Auf Wiedersehen!"
+  ]},
+  { title: "Shopping for Clothes", lines: [
+    "A: Guten Tag! Kann ich Ihnen helfen?", "B: Ja, ich suche eine Hose.",
+    "A: Welche Größe haben Sie?", "B: Größe 38.", "A: Welche Farbe möchten Sie?",
+    "B: Schwarz oder blau.", "A: Hier, bitte. Die Umkleidekabine ist dort.",
+    "B: Die Hose ist zu klein. Haben Sie eine größere?", "A: Ja, hier ist Größe 40.",
+    "B: Perfekt! Die nehme ich. Wie viel kostet sie?", "A: 49,99 Euro.", "B: Hier ist meine Karte."
+  ]},
+  { title: "At the Doctor", lines: [
+    "A: Guten Morgen, was fehlt Ihnen?", "B: Mir tut der Kopf weh. Und ich habe Fieber.",
+    "A: Seit wann?", "B: Seit gestern Abend.", "A: Ich werde Sie untersuchen. Machen Sie bitte den Mund auf.",
+    "B: Aah...", "A: Sie haben eine Grippe. Bleiben Sie im Bett und trinken Sie viel Tee.",
+    "B: Brauche ich Medikamente?", "A: Ja, hier ist ein Rezept. Gehen Sie damit in die Apotheke.",
+    "B: Vielen Dank, Herr Doktor."
+  ]},
+  { title: "Asking for Directions", lines: [
+    "A: Entschuldigung, wo ist der Bahnhof?", "B: Gehen Sie geradeaus bis zur Ampel.",
+    "A: Geradeaus?", "B: Ja, dann rechts. Nach 200 Metern sehen Sie den Bahnhof.",
+    "A: Ist das weit?", "B: Nein, ungefähr 10 Minuten zu Fuß.", "A: Vielen Dank!",
+    "B: Bitte schön. Gute Reise!"
+  ]},
+  { title: "At the Train Station", lines: [
+    "A: Wann fährt der nächste Zug nach Köln?", "B: Um 14:30 Uhr von Gleis 5.",
+    "A: Wie viel kostet eine Fahrkarte?", "B: Einfach oder hin und zurück?",
+    "A: Einfach, bitte.", "B: Das macht 45 Euro.", "A: Hat der Zug Verspätung?",
+    "B: Nein, pünktlich. Gute Fahrt!"
+  ]},
+  { title: "Making a Phone Call", lines: [
+    "A: Schmidt, guten Tag.", "B: Guten Tag, hier spricht Anna Weber. Kann ich bitte Frau Schmidt sprechen?",
+    "A: Sie sprechen mit ihr. Wie kann ich helfen?", "B: Ich möchte einen Termin vereinbaren.",
+    "A: Wofür?", "B: Für ein Bewerbungsgespräch.", "A: Passt Ihnen Montag um 10 Uhr?",
+    "B: Ja, sehr gern. Vielen Dank!", "A: Auf Wiederhören.", "B: Auf Wiederhören."
+  ]},
+  { title: "At the Hotel", lines: [
+    "A: Guten Abend, ich habe ein Zimmer reserviert.", "B: Auf welchen Namen?",
+    "A: Thomas Müller.", "B: Ja, ein Einzelzimmer für drei Nächte.",
+    "A: Ist das Frühstück inklusive?", "B: Ja, das Frühstück ist von 7 bis 10 Uhr.",
+    "A: Wo ist mein Zimmer?", "B: Zimmer 245, im zweiten Stock. Hier ist der Schlüssel.",
+    "A: Gibt es WLAN?", "B: Ja, das Passwort steht an der Rezeption."
+  ]},
+  { title: "Talking About Hobbies", lines: [
+    "A: Was machst du gerne in deiner Freizeit?", "B: Ich spiele Fußball und lese Bücher. Und du?",
+    "A: Ich gehe gerne schwimmen und höre Musik.", "B: Welche Musik hörst du?",
+    "A: Ich mag Pop und Rock. Was ist dein Lieblingsbuch?",
+    "B: \"Harry Potter\". Hast du das gelesen?", "A: Ja, sehr gut!"
+  ]},
+  { title: "At Work", lines: [
+    "A: Hallo, ich bin der neue Kollege. Mein Name ist Lukas.", "B: Herzlich willkommen! Ich bin Petra.",
+    "A: Kannst du mir zeigen, wo mein Arbeitsplatz ist?", "B: Natürlich. Komm mit.",
+    "A: Wann beginnt die Arbeit?", "B: Um 9 Uhr. Mittagspause ist von 12 bis 13 Uhr.",
+    "A: Und wann endet der Tag?", "B: Normalerweise um 17 Uhr."
+  ]}
+];
+const WRITING_TASKS = [
+  { title: "Simple Email", text: "Subject: Meine Bestellung\n\nSehr geehrte Damen und Herren,\n\nich möchte ein Buch bestellen. Der Titel ist \"Deutsch lernen\". Meine Adresse: Müllerstraße 5, 10115 Berlin.\n\nVielen Dank!\n\nMit freundlichen Grüßen\nAnna Weber" },
+  { title: "Postcard from Vacation", text: "Liebe Familie,\n\nich bin in Berlin. Das Wetter ist schön. Gestern war ich im Museum. Morgen gehe ich zum Brandenburger Tor. Das Essen ist lecker. Vermisse euch!\n\nViele Grüße\nThomas" },
+  { title: "Daily Routine", text: "Mein Tag\n\nIch stehe um 7 Uhr auf. Dann dusche ich und frühstücke. Um 8 Uhr gehe ich zur Arbeit. Ich arbeite bis 16 Uhr. Nach der Arbeit kaufe ich ein. Um 18 Uhr koche ich Abendessen. Am Abend sehe ich fern. Um 22 Uhr gehe ich ins Bett." }
+];
+const COMPREHENSION_QUESTIONS = [
+  { title: "Greetings", questions: [
+    "How do you say \"Good morning\" in German?",
+    "What's the difference between \"Tschüss\" and \"Auf Wiedersehen\"?",
+    "How do you introduce yourself?",
+    "What do you say after \"Wie geht es dir?\" if you're doing well?",
+    "When do you use \"Grüß Gott\"?"
+  ]},
+  { title: "Numbers", questions: [
+    "Count from 1 to 20 in German.",
+    "Say your age in German.",
+    "How do you form numbers 21-99?",
+    "What's the difference between \"eins\" and \"ein\"?",
+    "Say the price €24.50 in German."
+  ]},
+  { title: "Family", questions: [
+    "Name 5 family members in German with articles.",
+    "How do you say \"my mother\" in German?",
+    "Say \"I have two brothers\" in German.",
+    "What's the difference between \"die Frau\" and \"die Tochter\"?",
+    "Say \"That is my family\" in German."
+  ]},
+  { title: "Food", questions: [
+    "Order a pizza and a water in German.",
+    "Ask for the bill.",
+    "Say \"I would like\" in German.",
+    "How do you say \"The food is delicious\"?",
+    "Say \"Do you have vegetarian options?\""
+  ]}
+];
+const CULTURE_NOTES = {
+  facts: [
+    "Capital: Berlin",
+    "Population: 83 million",
+    "Currency: Euro (€)",
+    "National anthem: \"Das Lied der Deutschen\"",
+    "Famous for: Cars (BMW, Mercedes, Audi, VW), Beer, Christmas markets"
+  ],
+  holidays: {
+    headers: ["Date", "Holiday", "German Name"],
+    rows: [
+      ["January 1", "New Year's Day", "Neujahr"],
+      ["March/April", "Easter", "Ostern"],
+      ["May 1", "Labor Day", "Tag der Arbeit"],
+      ["October 3", "German Unity Day", "Tag der Deutschen Einheit"],
+      ["December 24-26", "Christmas", "Weihnachten"]
+    ]
+  },
+  etiquette: [
+    "Always say \"Hallo\" when entering a shop",
+    "Use \"Sie\" for strangers and authority figures (not \"du\")",
+    "Be on time – punctuality is very important",
+    "Toasting: look people in the eye",
+    "Bring flowers (odd number, not red roses) when invited to someone's home",
+    "Remove shoes when entering a home",
+    "Separate your trash – recycling is serious!"
+  ],
+  famousPeople: {
+    headers: ["Name", "Known For"],
+    rows: [
+      ["Johann Wolfgang von Goethe", "Writer (Faust)"],
+      ["Ludwig van Beethoven", "Composer"],
+      ["Albert Einstein", "Physicist"],
+      ["Angela Merkel", "Former Chancellor"],
+      ["Martin Luther", "Religious reformer"]
+    ]
+  },
+  foodSpecialties: {
+    headers: ["Dish", "Description"],
+    rows: [
+      ["Currywurst", "Sausage with curry ketchup"],
+      ["Sauerkraut", "Fermented cabbage"],
+      ["Bratwurst", "Grilled sausage"],
+      ["Schnitzel", "Breaded meat cutlet"],
+      ["Brezel", "Pretzel"],
+      ["Schwarzwälder Kirschtorte", "Black Forest cake"]
+    ]
+  }
+};
+const VOCAB_TRACKER = [
+  ["Greetings", "11"], ["Polite phrases", "9"], ["Numbers", "30"], ["Days & months", "19"],
+  ["Time expressions", "17"], ["Family", "17"], ["Food & drinks", "32"], ["Colors", "13"],
+  ["Adjectives", "24"], ["Weather & nature", "18"], ["Body parts", "15"], ["Clothing", "15"],
+  ["House & furniture", "17"], ["Transportation", "16"], ["Professions", "14"], ["TOTAL", "~300 words"]
+];
+const SELF_ASSESSMENT = [
+  { title: "Listening", items: [
+    "Understand simple greetings and introductions",
+    "Recognize numbers, days, and months when spoken",
+    "Follow simple directions",
+    "Understand basic food and drink orders",
+    "Catch key words in slow, clear speech"
+  ]},
+  { title: "Speaking", items: [
+    "Introduce yourself and others",
+    "Ask and answer simple questions (name, age, where you live)",
+    "Order food and drinks",
+    "Ask for directions",
+    "Talk about daily routines",
+    "Express likes and dislikes"
+  ]},
+  { title: "Reading", items: [
+    "Read simple signs and notices",
+    "Understand short emails and postcards",
+    "Read a menu",
+    "Follow simple written instructions",
+    "Understand basic advertisements"
+  ]},
+  { title: "Writing", items: [
+    "Fill out a simple form (name, address, etc.)",
+    "Write a short postcard or email",
+    "Describe your daily routine in writing",
+    "Make a simple shopping list"
+  ]},
+  { title: "Grammar", items: [
+    "Conjugate regular verbs in present tense",
+    "Use sein, haben, and modal verbs correctly",
+    "Form basic sentences (SVO word order)",
+    "Ask yes/no and W-questions",
+    "Use accusative and dative cases correctly",
+    "Say what you like (gern/mögen)",
+    "Use \"nicht\" and \"kein\" for negation"
+  ]}
+];
 const FULL_A1 = [
   {de:"Hallo",en:"Hello"},{de:"Guten Morgen",en:"Good morning"},{de:"Guten Abend",en:"Good evening"},{de:"Gute Nacht",en:"Good night"},
   {de:"Tschüss",en:"Bye"},{de:"Auf Wiedersehen",en:"Goodbye"},{de:"Bitte",en:"Please/You're welcome"},{de:"Danke",en:"Thanks"},
@@ -550,7 +1026,66 @@ const FULL_A1 = [
   {de:"der Arzt",en:"doctor"},{de:"die Apotheke",en:"pharmacy"},{de:"Hilfe",en:"help"},
   {de:"krank",en:"sick"},{de:"gesund",en:"healthy"},{de:"die Schmerzen",en:"pain"},
   {de:"der Sport",en:"sport"},{de:"die Musik",en:"music"},{de:"das Kino",en:"cinema"},
-  {de:"das Buch",en:"book"},{de:"die Reise",en:"trip"},{de:"der Spaziergang",en:"walk"}
+  {de:"das Buch",en:"book"},{de:"die Reise",en:"trip"},{de:"der Spaziergang",en:"walk"},
+  {de:"Guten Tag",en:"Good day / Hello"},{de:"Bis bald",en:"See you soon"},{de:"Bis später",en:"See you later"},
+  {de:"Bis morgen",en:"See you tomorrow"},{de:"Servus",en:"Hi/Bye"},{de:"Grüß Gott",en:"Greetings"},
+  {de:"Vielen Dank",en:"Many thanks"},{de:"Es tut mir leid",en:"I'm sorry"},
+  {de:"Gern geschehen",en:"My pleasure"},{de:"Wie bitte?",en:"Pardon?"},
+  {de:"einundzwanzig",en:"twenty-one"},{de:"zweiundzwanzig",en:"twenty-two"},
+  {de:"dreißig",en:"thirty"},{de:"vierzig",en:"forty"},{de:"fünfzig",en:"fifty"},
+  {de:"sechzig",en:"sixty"},{de:"siebzig",en:"seventy"},{de:"achtzig",en:"eighty"},
+  {de:"neunzig",en:"ninety"},{de:"hundert",en:"hundred"},
+  {de:"Wochenende",en:"weekend"},{de:"Werktag",en:"weekday"},
+  {de:"Frühling",en:"spring"},{de:"Sommer",en:"summer"},{de:"Herbst",en:"autumn"},{de:"Winter",en:"winter"},
+  {de:"Wie spät ist es?",en:"What time is it?"},{de:"Es ist... Uhr",en:"It's ... o'clock"},
+  {de:"halb",en:"half past"},{de:"Viertel",en:"quarter"},{de:"nach",en:"past"},{de:"vor",en:"to / before"},
+  {de:"morgens",en:"in the morning"},{de:"mittags",en:"at noon"},{de:"nachmittags",en:"in the afternoon"},
+  {de:"abends",en:"in the evening"},{de:"nachts",en:"at night"},{de:"bald",en:"soon"},
+  {de:"immer",en:"always"},{de:"manchmal",en:"sometimes"},{de:"nie",en:"never"},
+  {de:"die Oma",en:"grandma"},{de:"der Opa",en:"grandpa"},{de:"die Tante",en:"aunt"},
+  {de:"der Onkel",en:"uncle"},{de:"der Cousin",en:"cousin (male)"},{de:"die Cousine",en:"cousin (female)"},
+  {de:"das Baby",en:"baby"},
+  {de:"die Wurst",en:"sausage"},{de:"der Schinken",en:"ham"},{de:"der Salat",en:"salad"},
+  {de:"die Pizza",en:"pizza"},{de:"der Reis",en:"rice"},{de:"die Nudeln",en:"pasta/noodles"},
+  {de:"das Fleisch",en:"meat"},{de:"der Fisch",en:"fish"},{de:"die Orange",en:"orange"},
+  {de:"die Erdbeere",en:"strawberry"},
+  {de:"der Saft",en:"juice"},{de:"das Bier",en:"beer"},{de:"der Wein",en:"wine"},{de:"die Limonade",en:"lemonade"},
+  {de:"orange",en:"orange"},{de:"rosa",en:"pink"},{de:"pink",en:"pink"},{de:"lila",en:"purple"},{de:"bunt",en:"colorful"},
+  {de:"jung",en:"young"},{de:"hässlich",en:"ugly"},{de:"leicht",en:"easy/light"},
+  {de:"schwer",en:"difficult/heavy"},{de:"glücklich",en:"happy"},{de:"traurig",en:"sad"},
+  {de:"müde",en:"tired"},{de:"hungrig",en:"hungry"},{de:"durstig",en:"thirsty"},{de:"langweilig",en:"boring"},
+  {de:"die Sonne",en:"sun"},{de:"der Regen",en:"rain"},{de:"der Schnee",en:"snow"},{de:"der Wind",en:"wind"},
+  {de:"die Wolke",en:"cloud"},{de:"der Himmel",en:"sky"},{de:"der Baum",en:"tree"},{de:"die Blume",en:"flower"},
+  {de:"das Gras",en:"grass"},{de:"der Wald",en:"forest"},{de:"der See",en:"lake"},{de:"das Meer",en:"ocean"},
+  {de:"der Berg",en:"mountain"},{de:"Es ist sonnig",en:"It's sunny"},{de:"Es regnet",en:"It's raining"},
+  {de:"Es schneit",en:"It's snowing"},{de:"Es ist windig",en:"It's windy"},{de:"Es ist warm",en:"It's warm"},
+  {de:"Es ist kalt",en:"It's cold"},
+  {de:"der Kopf",en:"head"},{de:"das Haar",en:"hair"},{de:"das Auge",en:"eye"},{de:"die Nase",en:"nose"},
+  {de:"der Mund",en:"mouth"},{de:"das Ohr",en:"ear"},{de:"der Zahn",en:"tooth"},{de:"die Hand",en:"hand"},
+  {de:"der Finger",en:"finger"},{de:"der Arm",en:"arm"},{de:"der Fuß",en:"foot"},{de:"das Bein",en:"leg"},
+  {de:"der Bauch",en:"belly"},{de:"das Herz",en:"heart"},
+  {de:"das Hemd",en:"shirt"},{de:"die Bluse",en:"blouse"},{de:"das T-Shirt",en:"T-shirt"},
+  {de:"die Hose",en:"pants"},{de:"die Jeans",en:"jeans"},{de:"der Rock",en:"skirt"},
+  {de:"das Kleid",en:"dress"},{de:"die Jacke",en:"jacket"},{de:"der Mantel",en:"coat"},
+  {de:"der Schuh",en:"shoe"},{de:"die Socke",en:"sock"},{de:"der Hut",en:"hat"},
+  {de:"die Mütze",en:"cap"},{de:"der Schal",en:"scarf"},
+  {de:"das Wohnzimmer",en:"living room"},{de:"das Schlafzimmer",en:"bedroom"},{de:"das Badezimmer",en:"bathroom"},
+  {de:"der Flur",en:"hallway"},{de:"der Garten",en:"garden"},
+  {de:"der Schrank",en:"closet/cabinet"},{de:"der Spiegel",en:"mirror"},{de:"das Sofa",en:"sofa"},{de:"der Teppich",en:"rug"},
+  {de:"das Auto",en:"car"},{de:"die Bahn",en:"train"},{de:"die Straßenbahn",en:"tram"},{de:"die U-Bahn",en:"subway"},
+  {de:"das Taxi",en:"taxi"},{de:"das Fahrrad",en:"bicycle"},{de:"das Motorrad",en:"motorcycle"},
+  {de:"das Flugzeug",en:"airplane"},{de:"das Schiff",en:"ship"},{de:"die Haltestelle",en:"bus stop"},
+  {de:"der Fahrplan",en:"schedule"},
+  {de:"die Lehrerin",en:"teacher"},{de:"der Lehrer",en:"teacher"},
+  {de:"der Student",en:"student"},{de:"die Studentin",en:"student"},
+  {de:"der Ingenieur",en:"engineer"},{de:"die Ingenieurin",en:"engineer"},
+  {de:"der Koch",en:"cook/chef"},{de:"die Köchin",en:"cook/chef"},
+  {de:"der Fahrer",en:"driver"},{de:"die Fahrerin",en:"driver"},
+  {de:"der Verkäufer",en:"salesperson"},{de:"die Verkäuferin",en:"salesperson"},
+  {de:"der Polizist",en:"police officer"},{de:"die Polizistin",en:"police officer"},
+  {de:"der Anwalt",en:"lawyer"},{de:"die Anwältin",en:"lawyer"},
+  {de:"der Kellner",en:"waiter"},{de:"die Kellnerin",en:"waiter"},
+  {de:"der Künstler",en:"artist"},{de:"die Künstlerin",en:"artist"}
 ];
 let appData = {
   xp: 0, streak: 0, lastActiveDate: null, completedLessons: {}, dailyTasks:{}, reflections: [], srsWords:{}, mistakeLog:[]
@@ -964,6 +1499,96 @@ function renderGrammarTips() {
   if (!list) return;
   list.innerHTML = GRAMMAR_TIPS.map(t => `<li>${t}</li>`).join("");
 }
+function renderCourseLibrary() {
+  let container = document.getElementById("courseLibrary");
+  if (!container) return;
+  const safe = (value) => escapeHtml(String(value));
+  const makeTable = (headers, rows) => `
+    <div class="course-table-wrapper">
+      <table class="course-table">
+        <thead><tr>${headers.map(h => `<th>${safe(h)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${safe(c)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+    </div>
+  `;
+  const renderBlock = (block) => {
+    let html = `<div class="course-block">`;
+    if (block.title) html += `<h4>${safe(block.title)}</h4>`;
+    if (block.text) html += block.text.map(t => `<div>${safe(t)}</div>`).join("");
+    if (block.headers && block.rows) html += makeTable(block.headers, block.rows);
+    if (block.list) html += `<ul class="tips-list">${block.list.map(item => `<li>${safe(item)}</li>`).join("")}</ul>`;
+    if (block.sections) html += block.sections.map(section => renderBlock(section)).join("");
+    html += `</div>`;
+    return html;
+  };
+  const renderBlocks = (blocks) => blocks.map(block => renderBlock(block)).join("");
+  const renderDialogues = () => DIALOGUES.map(dialogue => `
+    <div class="course-block">
+      <h4>${safe(dialogue.title)}</h4>
+      <div class="course-dialogue">
+        ${dialogue.lines.map(line => `<div class="course-dialogue-line">${safe(line)}</div>`).join("")}
+      </div>
+    </div>
+  `).join("");
+  const renderWritingTasks = () => WRITING_TASKS.map(task => `
+    <div class="course-block">
+      <h4>${safe(task.title)}</h4>
+      <div class="course-writing">${safe(task.text)}</div>
+    </div>
+  `).join("");
+  const renderQuestions = () => COMPREHENSION_QUESTIONS.map(section => `
+    <div class="course-block">
+      <h4>${safe(section.title)}</h4>
+      <ol>${section.questions.map(q => `<li>${safe(q)}</li>`).join("")}</ol>
+    </div>
+  `).join("");
+  const renderCulture = () => `
+    <div class="course-block">
+      <h4>Facts about Germany</h4>
+      <ul class="tips-list">${CULTURE_NOTES.facts.map(item => `<li>${safe(item)}</li>`).join("")}</ul>
+    </div>
+    <div class="course-block">
+      <h4>German Holidays</h4>
+      ${makeTable(CULTURE_NOTES.holidays.headers, CULTURE_NOTES.holidays.rows)}
+    </div>
+    <div class="course-block">
+      <h4>Cultural Etiquette</h4>
+      <ul class="tips-list">${CULTURE_NOTES.etiquette.map(item => `<li>${safe(item)}</li>`).join("")}</ul>
+    </div>
+    <div class="course-block">
+      <h4>Famous German People</h4>
+      ${makeTable(CULTURE_NOTES.famousPeople.headers, CULTURE_NOTES.famousPeople.rows)}
+    </div>
+    <div class="course-block">
+      <h4>German Food Specialties</h4>
+      ${makeTable(CULTURE_NOTES.foodSpecialties.headers, CULTURE_NOTES.foodSpecialties.rows)}
+    </div>
+  `;
+  const renderChecklist = () => SELF_ASSESSMENT.map(section => `
+    <div class="course-block">
+      <h4>${safe(section.title)}</h4>
+      <div class="course-checklist">
+        ${section.items.map(item => `<label><input type="checkbox"> ${safe(item)}</label>`).join("")}
+      </div>
+    </div>
+  `).join("");
+  const renderDetail = (title, body, open = false) => `
+    <details class="course-section"${open ? " open" : ""}>
+      <summary>${safe(title)}</summary>
+      <div class="course-section-body">${body}</div>
+    </details>
+  `;
+  container.innerHTML = [
+    renderDetail("Core Vocabulary (500+ words)", renderBlocks(CORE_VOCAB), true),
+    renderDetail("Grammar Topics (Complete A1)", renderBlocks(GRAMMAR_LIBRARY)),
+    renderDetail("Practical Dialogues", renderDialogues()),
+    renderDetail("A1 Writing Tasks", renderWritingTasks()),
+    renderDetail("Comprehension Questions", renderQuestions()),
+    renderDetail("Cultural Notes (Germany)", renderCulture()),
+    renderDetail("Complete Vocabulary Count Tracker", makeTable(["Category", "Count"], VOCAB_TRACKER)),
+    renderDetail("A1 Self-Assessment Checklist", renderChecklist())
+  ].join("");
+}
 function updateApiKeyStatus() {
   let status = document.getElementById("apiKeyStatus");
   if (!status) return;
@@ -1040,6 +1665,7 @@ renderDailyTasks();
 renderLessonLibrary();
 renderPhrasebook();
 renderGrammarTips();
+renderCourseLibrary();
 setupApiKeyControls();
 initSpeech();
 loadGame();
