@@ -978,7 +978,7 @@ function setupApiKeyControls() {
     let sanitized = sanitizeApiKey(input.value);
     input.value = sanitized;
     if (!sanitized) { showToast("Enter an API key or use Clear."); return; }
-    if (!isLikelyApiKey(sanitized)) { showToast("Invalid key. It should start with AIza and be 20+ chars."); return; }
+    if (!isLikelyApiKey(sanitized)) { showToast("Invalid API key format."); return; }
     localStorage.setItem("gemini_api_key", sanitized);
     updateApiKeyStatus();
     showToast("API key saved.");
