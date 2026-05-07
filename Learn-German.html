@@ -183,7 +183,7 @@
             <button class="btn" id="saveApiKeyBtn"><i class="fas fa-save"></i> Save</button>
             <button class="btn" id="clearApiKeyBtn"><i class="fas fa-eraser"></i> Clear</button>
           </div>
-          <small>Your key is stored unencrypted in your browser (localStorage).</small>
+          <small>Your key is stored in plain text in localStorage and accessible to scripts on this page. Use a restricted/low‑quota key.</small>
         </div>
       </div>
       <div class="glass-card" style="margin-top:20px;">
@@ -206,8 +206,8 @@
 </div>
 <script>
 // ========== CONFIG & DATA =====================
-let GEMINI_API_KEY = localStorage.getItem("gemini_api_key") || "";
-const hasApiKey = () => GEMINI_API_KEY.trim().length > 0;
+const getApiKey = () => localStorage.getItem("gemini_api_key") || "";
+const hasApiKey = () => getApiKey().trim().length > 0;
 const DAILY_TASKS = ["AI Chat", "Complete exercise", "Review SRS", "Speech practice", "Reflection"];
 const MODULES = [
   { id:1, title:"Greetings & Introductions", icon:"👋", lessons:3 },
@@ -703,9 +703,10 @@ document.getElementById("checkGameBtn").onclick = ()=>{
 };
 // ========== AI TUTOR / GEMINI ===================
 async function callGemini(prompt, context = "") {
-  if (!hasApiKey()) { return getOfflineResponse(prompt); }
+  let apiKey = getApiKey().trim();
+  if (!apiKey) { return getOfflineResponse(prompt); }
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -965,15 +966,13 @@ function updateApiKeyStatus() {
 function setupApiKeyControls() {
   let input = document.getElementById("apiKeyInput");
   if (!input) return;
-  input.value = GEMINI_API_KEY;
+  input.value = getApiKey();
   document.getElementById("saveApiKeyBtn").onclick = () => {
-    GEMINI_API_KEY = input.value.trim();
-    localStorage.setItem("gemini_api_key", GEMINI_API_KEY);
+    localStorage.setItem("gemini_api_key", input.value.trim());
     updateApiKeyStatus();
     showToast(hasApiKey() ? "API key saved." : "API key cleared.");
   };
   document.getElementById("clearApiKeyBtn").onclick = () => {
-    GEMINI_API_KEY = "";
     localStorage.removeItem("gemini_api_key");
     input.value = "";
     updateApiKeyStatus();
