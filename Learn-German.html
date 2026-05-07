@@ -198,7 +198,7 @@
             <button class="btn" id="saveApiKeyBtn"><i class="fas fa-save"></i> Save</button>
             <button class="btn" id="clearApiKeyBtn"><i class="fas fa-eraser"></i> Clear</button>
           </div>
-          <small>Stored in plain text in localStorage and readable by any script on this page (including XSS). The key is sent in the request URL. Use a restricted, low-quota key in Google Cloud, or a backend proxy for stronger protection.</small>
+          <small>Stored in plain text in localStorage and readable by any script on this page (including XSS). The key is sent in request headers. Use a restricted, low-quota key in Google Cloud, or a backend proxy for stronger protection.</small>
         </div>
       </div>
       <div class="glass-card" style="margin-top:20px;">
@@ -749,7 +749,7 @@ const GRAMMAR_LIBRARY = [
   { title: "Separable Verbs", sections: [
     { title: "Common Separable Verbs", headers: ["Verb", "Meaning", "Separated Example"], rows: [
       ["aufstehen", "to get up", "Ich stehe um 7 Uhr auf"], ["anrufen", "to call", "Ich rufe dich an"],
-      ["einkaufen", "to shop", "Ich kaufe ein ein"], ["mitkommen", "to come along", "Kommst du mit?"],
+      ["einkaufen", "to shop", "Ich kaufe ein"], ["mitkommen", "to come along", "Kommst du mit?"],
       ["weggehen", "to go away", "Ich gehe jetzt weg"]
     ]},
     { title: "Rule", text: ["Prefix goes to the end of the clause."] }
@@ -1246,9 +1246,9 @@ async function callGemini(prompt, context = "") {
   let apiKey = getApiKey();
   if (!apiKey || !isLikelyApiKey(apiKey)) { return getOfflineResponse(prompt); }
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         contents: [{
           parts: [{ text: `You are a friendly German tutor for A1 learners. Keep responses short (2-3 sentences), encouraging, and in English with German examples. User: ${prompt}\n\nContext: User has completed ${Object.values(appData.completedLessons).filter(v=>v===true).length} lessons. ${context}` }]
@@ -1593,7 +1593,7 @@ function updateApiKeyStatus() {
   let status = document.getElementById("apiKeyStatus");
   if (!status) return;
   let key = getApiKey();
-  status.innerText = key ? (isLikelyApiKey(key) ? "Connected" : "Invalid key") : "Not set";
+  status.innerText = key ? (isLikelyApiKey(key) ? "Key set" : "Invalid key") : "Not set";
 }
 function setupApiKeyControls() {
   let input = document.getElementById("apiKeyInput");
